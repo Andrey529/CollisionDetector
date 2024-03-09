@@ -3,6 +3,9 @@ import time
 import serial
 import sys
 import os
+import output_matrix_calculation
+import matrix_visualisation as matrix_visualisation
+import visual
 # GPIO pin numbers for ultrasonic sensors (JSN-SR04T)
 ultrasonic_pins = {
     'ultrasonic_sensor1': {'trigger': 35, 'echo': 37},
@@ -77,7 +80,6 @@ def clear_lines_from_bottom(num_lines):
         sys.stdout.write("\033[K")  # Clear line
 
 def getSectors(numbers):
-    print(numbers)
     left_inf, right_inf, left_lid, right_lid = numbers
     result = ""
 
@@ -196,6 +198,8 @@ try:
                 distances.append(dist)
         
         sectors = getSectors(distances)
+        output_data = output_matrix_calculation.format_output_data(distances)
+        matrix_visualisation.print_data(output_data)
         print(f"Object detected at sectors: {sectors}")
         time.sleep(0.5)
         distances = []
