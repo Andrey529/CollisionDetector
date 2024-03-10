@@ -5,7 +5,16 @@ import sys
 import os
 import output_matrix_calculation
 import matrix_visualisation as matrix_visualisation
-import visual
+
+import argparse
+from luma.led_matrix.device import max7219
+from luma.core.interface.serial import spi, noop
+from luma.core.render import canvas
+from luma.core.virtual import viewport
+from luma.core.legacy import text, show_message
+from luma.core.legacy.font import proportional, CP437_FONT, TINY_FONT, SINCLAIR_FONT, LCD_FONT
+
+
 # GPIO pin numbers for ultrasonic sensors (JSN-SR04T)
 ultrasonic_pins = {
     'ultrasonic_sensor1': {'trigger': 35, 'echo': 37},
@@ -15,63 +24,6 @@ lidars_config = {
     'lidar': {'port': '/dev/ttyUSB0', 'braudrate': '115200'},
     'lidar1': {'port': '/dev/ttyAMA0', 'braudrate': '115200'}
 }
-
-def print_sectors():
-    art = [
-        "                      ..:==*******==:.",
-        "                  ..-*=:..   .%    ..:+*.",
-        "                  .++..      .%       ..+-",
-        "                  .:#.       .%        .#:",
-        "                  ..%.       .%        .#.",
-        "                    #:   1   .%   2    :#.",
-        "                    +-       .%        *+",
-        "                    -=.      .%       .#:",
-        "                    :#.      .%       .%.",
-        "                    .#.      .%       -#.",
-        "                    .#.      .%       ==.",
-        "                    .*=      .%       +-",
-        "                     -%      .%       #:",
-        "                     .%.     .%      .#.",
-        "                     .%:     .%     ..*.",
-        "                     .==     .%     .*+.",
-        "                     .:=     .%     .%:.",
-        "                     .:*     .%     .%..",
-        "                    ...#......%.....:%...",
-        "              ..*%%*=::*::::=*@+-:::++::+#%%+.",
-        "         ..=#*-.....  .*-.   -@    .=:  ......=#*-...",
-        "       .:#+.          .=#.   -@    .*:           .*#:.",
-        "     .=#:..           ..@. 5 -@  6 .#.            ..:@-",
-        "   .-#:.              ..@:   -@    .*.               .-%-.",
-        "  .#=                   #=   -@    -+.                 .++..",
-        "  .=#         3         =+   -@    #=        4         .#:.",
-        "   .:#..                .*.  -@   .@.                .:%:.",
-        "     -%.                .#.  -@  .:@.                :#.",
-        "      .%:               .*.  -@  .=#.              .-%.",
-        "      .:%:.             .+:  -@  .+:.             .-*..",
-        "       ..#-.            .=#  -@  .*.             .=*..",
-        "         .#-.            :@  -@  .#            ..=+.",
-        "          .+=            .@..-@ .:*            .*+.",
-        "           .+*.          .%-.-@ .-+           .*-",
-        "           ..=*.         .-*.-@ .#=         ..%-..",
-        "             .-#..       ..*.-@ .%:        ..#..",
-        "              .:#.        .#.-@ .%.        :@:",
-        "                :%..       *:-@ -#.     ..:#.",
-        "                ..%:       =:-@ *-      .-%..",
-        "                  .#:.     ==-@.*.     .-*.",
-        "                  ..#-.    -#-@.#.    .+*.",
-        "                    .#=.   .%-@:*.  ..+=.",
-        "                     .+=   .%=@:=.  .*=.",
-        "                      .+*.  +#@+=  .*-",
-        "                        :*. :@@%-..@-",
-        "                        .-%..@@%..#..",
-        "                         ..#.%@%:%:",
-        "                           :%+@##.",
-        "                            .%@%.",
-        "                            ..:.."
-    ]
-
-    for line in art:
-        print(line)
 
 def clear_lines_from_bottom(num_lines):
     # Move cursor up and clear lines
@@ -156,7 +108,6 @@ def getLidarDistance(ser):
         recv = ser.read(9)   
         ser.reset_input_buffer() 
         if recv[0] == 0x59 and recv[1] == 0x59:
-            print(recv)
             distance = recv[2] + recv[3] * 256
             ser.reset_input_buffer()
             return distance
@@ -166,7 +117,16 @@ def getLidarDistance(ser):
         return -2 
 
 try:
-    print_sectors()
+    parser = argparse.ArgumentParser(description='matrix_demo arguments',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('--cascaded', '-n', type=int, default=1, help='Number of cascaded MAX7219 LED matrices')
+    parser.add_argument('--block-orientation', type=int, default=0, choices=[0, 90, -90], help='Corrects block orientation when wired vertically')
+    parser.add_argument('--rotate', type=int, default=0, choices=[0, 1, 2, 3], help='Rotate display 0=0°, 1=90°, 2=180°, 3=270°')
+    parser.add_argument('--reverse-order', type=bool, default=False, help='Set to true if blocks are in reverse order')
+
+    args = parser.parse_args()
+ 
     distances = []
     while True:
         # Measure distance using ultrasonic sensors (JSN-SR04T)
@@ -198,12 +158,18 @@ try:
                 distances.append(dist)
         
         sectors = getSectors(distances)
+        #make output matrix
         output_data = output_matrix_calculation.format_output_data(distances)
-        matrix_visualisation.print_data(output_data)
+        
+        #visualisation
+        matrix_visualisation.output_in_console(output_data)
+        matrix_visualisation.output_in_max7219_matrix(args.cascaded, args.block_orientation, args.rotate, args.reverse_order, output_data)
+    
         print(f"Object detected at sectors: {sectors}")
-        time.sleep(0.5)
+        #time.sleep(0.1)
         distances = []
-        clear_lines_from_bottom(6)
+        clear_lines_from_bottom(9)
+        
 except KeyboardInterrupt:
     print("Measurement stopped by user")
 finally:

@@ -54,10 +54,6 @@ def lidar_calculation(distance):
 	distance_in_lidar_zone = distance - max_distance_in_inf_zone
 	return points_in_lidar_zone - distance_in_lidar_zone // proportion_by_one_point
 	
-	
-	
-		
-		
 def inf_calculation(distance):
 	if distance == 0:
 		return 0
