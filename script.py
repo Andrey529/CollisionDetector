@@ -144,29 +144,34 @@ try:
             else:
                 print(f"Ultrasonic {sensor} - Distanse: {dist} cm")
                 distances.append(dist)
+        
+        isOkey = True
                 
         for name, ser in lidars_serials.items():
             dist = getLidarDistance(ser)
             if dist == -1:
                 print(f"lidar {name} - Distance: distance error ")
                 distances.append(0)
+                isOkey = False
             elif dist == -2:
                 print(f"lidar {name} - Distance: serial port not ready")
                 distances.append(0)
+                isOkey = False
             else:
                 print(f"lidar {name} - Distance: {dist} cm")
                 distances.append(dist)
         
-        sectors = getSectors(distances)
-        #make output matrix
-        output_data = output_matrix_calculation.format_output_data(distances)
+        if isOkey != False:
+            sectors = getSectors(distances)
+            #make output matrix
+            output_data = output_matrix_calculation.format_output_data(distances)
         
-        #visualisation
-        matrix_visualisation.output_in_console(output_data)
-        matrix_visualisation.output_in_max7219_matrix(args.cascaded, args.block_orientation, args.rotate, args.reverse_order, output_data)
+            #visualisation
+            matrix_visualisation.output_in_console(output_data)
+            matrix_visualisation.output_in_max7219_matrix(args.cascaded, args.block_orientation, args.rotate, args.reverse_order, output_data)
     
-        print(f"Object detected at sectors: {sectors}")
-        #time.sleep(0.1)
+            print(f"Object detected at sectors: {sectors}")
+            #time.sleep(0.1)
         distances = []
         clear_lines_from_bottom(9)
         
